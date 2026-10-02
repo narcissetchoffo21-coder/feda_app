@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070a12">
+  <meta name="description" content="FEDA — vidéos courtes, créateurs et communauté.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/feda-logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <title>FEDA</title>
+</head>
+<body>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <section id="auth-screen" class="auth-screen">
+    <div class="auth-card">
+      <img src="assets/feda-logo.svg" alt="Logo FEDA" class="auth-logo">
+      <h1>Bienvenue sur FEDA</h1>
+      <p>Regardez, publiez et soutenez les créateurs.</p>
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-auth-mode="login">Connexion</button>
+        <button class="auth-tab" data-auth-mode="signup">Créer un compte</button>
+      </div>
+      <form id="auth-form">
+        <label id="name-field" class="hidden">Nom public
+          <input id="auth-name" autocomplete="name" maxlength="50" placeholder="Votre nom">
+        </label>
+        <label>Adresse e-mail
+          <input id="auth-email" type="email" autocomplete="email" required placeholder="vous@exemple.com">
+        </label>
+        <label>Mot de passe
+          <input id="auth-password" type="password" autocomplete="current-password" minlength="8" required placeholder="8 caractères minimum">
+        </label>
+        <button id="auth-submit" class="primary wide" type="submit">Se connecter</button>
+      </form>
+      <p id="auth-help" class="small">Votre compte FEDA est indépendant de ChatGPT.</p>
+    </div>
+  </section>
+
+  <div id="app" class="app hidden">
+    <header class="topbar">
+      <button id="brand-button" class="brand" aria-label="Accueil"><img src="assets/feda-logo.svg" alt=""><span>FEDA</span></button>
+      <div class="feed-tabs" role="tablist">
+        <button class="feed-tab" data-feed="following">Abonnements</button>
+        <button class="feed-tab active" data-feed="for-you">Pour toi</button>
+        <button class="feed-tab" data-feed="new">Nouveautés</button>
+      </div>
+      <button class="icon-button" data-view="search" aria-label="Rechercher">⌕</button>
+    </header>
+
+    <main>
+      <section id="view-feed" class="view active">
+        <div id="feed" class="feed"></div>
+        <div id="feed-empty" class="empty hidden">
+          <div class="empty-icon">🎬</div>
+          <h2>Aucune vidéo pour le moment</h2>
+          <p>Soyez la première personne à publier sur FEDA.</p>
+          <button class="primary" data-view="publish">Publier une vidéo</button>
+        </div>
+      </section>
+
+      <section id="view-search" class="view panel-view">
+        <div class="panel-head"><h2>Découvrir</h2></div>
+        <form id="search-form" class="search-box">
+          <input id="search-input" type="search" maxlength="80" placeholder="Rechercher une vidéo ou un créateur">
+          <button class="primary" type="submit">Rechercher</button>
+        </form>
+        <div id="search-results" class="cards"></div>
+      </section>
+
+      <section id="view-publish" class="view panel-view">
+        <div class="panel-head"><h2>Publier</h2></div>
+        <form id="publish-form" class="form-card">
+          <label class="upload-zone" for="video-file">
+            <span class="upload-icon">＋</span>
+            <strong>Choisir une vidéo</strong>
+            <small>MP4, WebM ou MOV — 30 Mo maximum</small>
+            <input id="video-file" type="file" accept="video/mp4,video/webm,video/quicktime" required>
+          </label>
+          <video id="video-preview" class="preview hidden" controls playsinline></video>
+          <label>Légende
+            <textarea id="video-caption" maxlength="500" rows="4" placeholder="Écrivez une légende…"></textarea>
+          </label>
+          <button id="publish-button" class="primary wide" type="submit">Publier maintenant</button>
+          <div id="upload-progress" class="progress hidden"><span></span></div>
+        </form>
+      </section>
+
+      <section id="view-inbox" class="view panel-view">
+        <div class="panel-head"><h2>Boîte de réception</h2><button id="mark-read" class="text-button">Tout lire</button></div>
+        <div id="notifications" class="list"></div>
+      </section>
+
+      <section id="view-wallet" class="view panel-view">
+        <div class="panel-head"><h2>Portefeuille</h2></div>
+        <div class="wallet-grid">
+          <div class="balance-card coins"><small>FedaCoins</small><strong id="coin-balance">0</strong><span>Pour offrir des cadeaux</span></div>
+          <div class="balance-card earnings"><small>Revenus créateur</small><strong><span id="earnings-balance">0</span> FCFA</strong><span>Retirable par Mobile Money</span></div>
+        </div>
+        <div class="form-card">
+          <h3>Acheter des FedaCoins</h3>
+          <p class="muted">Payez sur le numéro FEDA, puis saisissez la référence de transaction pour validation.</p>
+          <div class="coin-packs">
+            <button type="button" data-pack="500">500 coins<br><small>500 FCFA</small></button>
+            <button type="button" data-pack="1000">1 000 coins<br><small>1 000 FCFA</small></button>
+            <button type="button" data-pack="5000">5 000 coins<br><small>5 000 FCFA</small></button>
+          </div>
+          <form id="coin-order-form" class="stack hidden">
+            <input id="coin-amount" type="hidden">
+            <label>Mode de paiement<select id="coin-method"><option value="mtn_momo">MTN MoMo</option><option value="orange_money">Orange Money</option></select></label>
+            <label>Votre numéro<input id="coin-phone" inputmode="tel" required placeholder="Ex. 690000000"></label>
+            <label>Référence du paiement<input id="coin-reference" required maxlength="80" placeholder="ID de transaction Mobile Money"></label>
+            <button class="primary" type="submit">Envoyer pour validation</button>
+          </form>
+        </div>
+        <form id="payout-form" class="form-card">
+          <h3>Retirer mes revenus</h3>
+          <label>Montant (minimum 10 000 FCFA)<input id="payout-amount" type="number" min="10000" step="500" required></label>
+          <label>Mode de retrait<select id="payout-method"><option value="mtn_momo">MTN MoMo</option><option value="orange_money">Orange Money</option></select></label>
+          <label>Numéro Mobile Money<input id="payout-phone" inputmode="tel" required placeholder="Ex. 690000000"></label>
+          <button class="primary" type="submit">Demander le retrait</button>
+        </form>
+        <div class="form-card"><h3>Historique</h3><div id="wallet-history" class="list compact"></div></div>
+      </section>
+
+      <section id="view-profile" class="view panel-view">
+        <div class="profile-head">
+          <div id="profile-avatar" class="avatar large">F</div>
+          <div><h2 id="profile-name">FEDA</h2><p id="profile-email"></p></div>
+        </div>
+        <form id="profile-form" class="form-card">
+          <label>Nom public<input id="profile-display-name" maxlength="50" required></label>
+          <label>Biographie<textarea id="profile-bio" maxlength="250" rows="3"></textarea></label>
+          <button class="primary" type="submit">Enregistrer</button>
+        </form>
+        <button class="secondary wide" data-view="wallet">💰 Portefeuille et retraits</button>
+        <button id="admin-button" class="secondary wide hidden" data-view="admin">🛡️ Administration</button>
+        <button id="install-button" class="secondary wide hidden">Installer FEDA sur cet appareil</button>
+        <p class="small"><a href="privacy.html">Confidentialité</a> · <a href="terms.html">Règles de la communauté</a></p>
+        <button id="logout-button" class="danger wide">Se déconnecter</button>
+      </section>
+
+      <section id="view-admin" class="view panel-view">
+        <div class="panel-head"><h2>Administration</h2></div>
+        <div class="form-card"><h3>Achats de FedaCoins en attente</h3><div id="admin-orders" class="list compact"></div></div>
+        <div class="form-card"><h3>Retraits en attente</h3><div id="admin-payouts" class="list compact"></div></div>
+        <div class="form-card"><h3>Signalements</h3><div id="admin-reports" class="list compact"></div></div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Navigation principale">
+      <button class="nav-item active" data-view="feed"><span>⌂</span><small>Accueil</small></button>
+      <button class="nav-item" data-view="search"><span>⌕</span><small>Découvrir</small></button>
+      <button class="nav-item publish-nav" data-view="publish"><span>＋</span><small>Publier</small></button>
+      <button class="nav-item" data-view="inbox"><span>▢</span><small>Réception</small><i id="unread-badge" class="badge hidden">0</i></button>
+      <button class="nav-item" data-view="profile"><span>♙</span><small>Moi</small></button>
+    </nav>
+  </div>
+
+  <dialog id="comments-dialog" class="sheet">
+    <div class="sheet-head"><h3>Commentaires</h3><button data-close-dialog aria-label="Fermer">×</button></div>
+    <div id="comments-list" class="comments-list"></div>
+    <form id="comment-form" class="comment-form"><input id="comment-input" maxlength="500" required placeholder="Ajouter un commentaire…"><button type="submit">Envoyer</button></form>
+  </dialog>
+
+  <dialog id="gift-dialog" class="sheet small-sheet">
+    <div class="sheet-head"><h3>Envoyer un cadeau</h3><button data-close-dialog aria-label="Fermer">×</button></div>
+    <div class="gift-grid">
+      <button data-gift="Coeur" data-cost="10">❤️<strong>10</strong></button>
+      <button data-gift="Fleur" data-cost="50">🌹<strong>50</strong></button>
+      <button data-gift="Étoile" data-cost="100">⭐<strong>100</strong></button>
+      <button data-gift="Couronne" data-cost="500">👑<strong>500</strong></button>
+    </div>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

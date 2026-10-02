@@ -1,0 +1,15 @@
+{
+  "name": "FEDA",
+  "short_name": "FEDA",
+  "description": "Vidéos courtes, créateurs et communauté.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#070a12",
+  "theme_color": "#070a12",
+  "icons": [
+    {"src":"assets/feda-logo.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}
