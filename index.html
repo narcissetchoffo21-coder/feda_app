@@ -6,7 +6,8 @@
   <meta name="theme-color" content="#070a12">
   <meta name="description" content="FEDA — vidéos courtes, créateurs et communauté.">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="assets/feda-logo.svg" type="image/svg+xml">
+  <link rel="icon" href="icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="styles.css">
   <title>FEDA</title>
 </head>
@@ -15,7 +16,7 @@
 
   <section id="auth-screen" class="auth-screen">
     <div class="auth-card">
-      <img src="assets/feda-logo.svg" alt="Logo FEDA" class="auth-logo">
+      <img src="icon-192.png" alt="Logo FEDA" class="auth-logo">
       <h1>Bienvenue sur FEDA</h1>
       <p>Regardez, publiez et soutenez les créateurs.</p>
       <div class="auth-tabs">
@@ -40,7 +41,7 @@
 
   <div id="app" class="app hidden">
     <header class="topbar">
-      <button id="brand-button" class="brand" aria-label="Accueil"><img src="assets/feda-logo.svg" alt=""><span>FEDA</span></button>
+      <button id="brand-button" class="brand" aria-label="Accueil"><img src="icon-192.png" alt=""><span>FEDA</span></button>
       <div class="feed-tabs" role="tablist">
         <button class="feed-tab" data-feed="following">Abonnements</button>
         <button class="feed-tab active" data-feed="for-you">Pour toi</button>
@@ -177,7 +178,7 @@
     </div>
   </dialog>
 
-  <script src="tus.min.js?v=3"></script>
-  <script type="module" src="app.js?v=3"></script>
+  <script src="tus.min.js?v=4"></script>
+  <script type="module" src="app.js?v=4"></script>
 </body>
 </html>
