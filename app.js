@@ -3,7 +3,8 @@ import { FEDA_CONFIG } from "./config.js";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const state = { user: null, profile: null, feedMode: "for-you", videos: [], liked: new Set(), following: new Set(), activeVideo: null, installPrompt: null };
+const state = { user: null, profile: null, feedMode: "for-you", videos: [], liked: new Set(), following: new Set(), activeVideo: null, installPrompt: null, previewUrl: null };
+const VIDEO_MIME_BY_EXTENSION = Object.freeze({ mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime" });
 
 function escapeHtml(value = "") {
   return String(value).replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
@@ -26,6 +27,27 @@ function relativeDate(value) {
   const units = [[31536000, "an"], [2592000, "mois"], [86400, "j"], [3600, "h"], [60, "min"]];
   for (const [size, label] of units) if (seconds >= size) return `il y a ${Math.floor(seconds / size)} ${label}`;
   return "à l’instant";
+}
+
+function videoMimeType(file) {
+  const declared = (file.type || "").toLowerCase().split(";")[0];
+  if (Object.values(VIDEO_MIME_BY_EXTENSION).includes(declared)) return declared;
+  const extension = (file.name.split(".").pop() || "").toLowerCase();
+  if (VIDEO_MIME_BY_EXTENSION[extension]) return VIDEO_MIME_BY_EXTENSION[extension];
+  throw new Error("Choisissez une vidéo MP4, WebM ou MOV.");
+}
+
+function normalizedVideoFile(file) {
+  const type = videoMimeType(file);
+  return file.type === type ? file : new File([file], file.name, { type, lastModified: file.lastModified });
+}
+
+function videoExtension(type) {
+  return type === "video/webm" ? "webm" : type === "video/quicktime" ? "mov" : "mp4";
+}
+
+function formatMegabytes(bytes) {
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} Mo`;
 }
 
 function showAuth() {
@@ -277,31 +299,99 @@ async function sendGift(button) {
 }
 
 function previewVideo() {
-  const file = $("#video-file").files[0];
+  const input = $("#video-file");
+  const file = input.files[0];
   const preview = $("#video-preview");
-  if (!file) return preview.classList.add("hidden");
-  if (file.size > FEDA_CONFIG.maxVideoBytes) { $("#video-file").value = ""; return toast("La vidéo dépasse 30 Mo", true); }
-  preview.src = URL.createObjectURL(file);
+  const details = $("#video-details");
+  const status = $("#preview-status");
+  input.dataset.uploadPath = "";
+  if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+  state.previewUrl = null;
+  if (!file) {
+    preview.removeAttribute("src");
+    preview.classList.add("hidden");
+    details.classList.add("hidden");
+    status.classList.add("hidden");
+    return;
+  }
+  if (file.size > FEDA_CONFIG.maxVideoBytes) {
+    input.value = "";
+    details.classList.add("hidden");
+    status.classList.add("hidden");
+    return toast(`La vidéo dépasse ${formatBytes(FEDA_CONFIG.maxVideoBytes)}`, true);
+  }
+  try { videoMimeType(file); }
+  catch (error) { input.value = ""; return toast(error.message, true); }
+
+  details.textContent = `${file.name} · ${formatMegabytes(file.size)}`;
+  details.classList.remove("hidden");
+  status.textContent = "Préparation de l’aperçu…";
+  status.classList.remove("hidden", "error");
+  state.previewUrl = URL.createObjectURL(file);
+  preview.src = state.previewUrl;
+  preview.onloadedmetadata = () => {
+    const duration = Number.isFinite(preview.duration) ? ` · ${Math.ceil(preview.duration)} s` : "";
+    status.textContent = `Vidéo prête${duration}`;
+  };
+  preview.onerror = () => {
+    status.textContent = "Aperçu indisponible sur ce téléphone. La vidéo peut quand même être publiée.";
+  };
   preview.classList.remove("hidden");
+  preview.load();
 }
 
 async function publishVideo(event) {
   event.preventDefault();
-  const file = $("#video-file").files[0];
-  if (!file) return;
-  if (file.size > FEDA_CONFIG.maxVideoBytes) return toast("La vidéo dépasse 30 Mo", true);
+  const input = $("#video-file");
+  const selectedFile = input.files[0];
+  if (!selectedFile) return toast("Choisissez d’abord une vidéo.", true);
+  let file;
+  try { file = normalizedVideoFile(selectedFile); }
+  catch (error) { return toast(error.message, true); }
+  if (file.size > FEDA_CONFIG.maxVideoBytes) return toast(`La vidéo dépasse ${formatBytes(FEDA_CONFIG.maxVideoBytes)}`, true);
   const button = $("#publish-button");
-  button.disabled = true; $("#upload-progress").classList.remove("hidden");
+  const progress = $("#upload-progress");
+  const progressBar = $("#upload-progress-bar");
+  const uploadStatus = $("#upload-status");
+  button.disabled = true;
+  button.textContent = "Préparation…";
+  progress.classList.remove("hidden", "error");
+  progressBar.style.width = "0%";
+  progress.setAttribute("aria-valuenow", "0");
+  uploadStatus.textContent = "Préparation de l’envoi sécurisé…";
+  uploadStatus.classList.remove("hidden", "error");
   try {
-    const ext = (file.name.split(".").pop() || "mp4").replace(/[^a-z0-9]/gi, "").toLowerCase();
-    const path = `${state.user.id}/${crypto.randomUUID()}.${ext}`;
-    await api.uploadVideo(file, path);
+    const path = input.dataset.uploadPath || `${state.user.id}/${crypto.randomUUID()}.${videoExtension(file.type)}`;
+    input.dataset.uploadPath = path;
+    await api.uploadVideo(file, path, ({ bytesUploaded, bytesTotal, percent }) => {
+      progressBar.style.width = `${percent}%`;
+      progress.setAttribute("aria-valuenow", String(percent));
+      button.textContent = `Envoi… ${percent} %`;
+      uploadStatus.textContent = `${formatMegabytes(bytesUploaded)} sur ${formatMegabytes(bytesTotal)} envoyés`;
+    });
+    button.textContent = "Finalisation…";
+    uploadStatus.textContent = "Enregistrement de la publication…";
     await api.createVideo({ user_id: state.user.id, storage_path: path, caption: $("#video-caption").value.trim(), mime_type: file.type, size_bytes: file.size });
-    event.currentTarget.reset(); $("#video-preview").classList.add("hidden");
+    event.currentTarget.reset();
+    input.dataset.uploadPath = "";
+    if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+    state.previewUrl = null;
+    $("#video-preview").removeAttribute("src");
+    $("#video-preview").classList.add("hidden");
+    $("#video-details").classList.add("hidden");
+    $("#preview-status").classList.add("hidden");
     toast("Vidéo publiée sur FEDA !");
     await changeFeed("new"); navigate("feed");
-  } catch (error) { toast(error.message, true); }
-  finally { button.disabled = false; $("#upload-progress").classList.add("hidden"); }
+  } catch (error) {
+    progress.classList.add("error");
+    uploadStatus.textContent = error.message;
+    uploadStatus.classList.add("error");
+    toast(error.message, true);
+  }
+  finally {
+    button.disabled = false;
+    button.textContent = "Publier maintenant";
+  }
 }
 
 async function searchVideos(event) {

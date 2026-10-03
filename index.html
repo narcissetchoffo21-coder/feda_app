@@ -75,15 +75,18 @@
           <label class="upload-zone" for="video-file">
             <span class="upload-icon">＋</span>
             <strong>Choisir une vidéo</strong>
-            <small>MP4, WebM ou MOV — 30 Mo maximum</small>
+            <small>MP4, WebM ou MOV — 50 Mo maximum actuellement</small>
             <input id="video-file" type="file" accept="video/mp4,video/webm,video/quicktime" required>
           </label>
+          <p id="video-details" class="file-details hidden"></p>
           <video id="video-preview" class="preview hidden" controls playsinline></video>
+          <p id="preview-status" class="upload-status hidden" aria-live="polite"></p>
           <label>Légende
             <textarea id="video-caption" maxlength="500" rows="4" placeholder="Écrivez une légende…"></textarea>
           </label>
           <button id="publish-button" class="primary wide" type="submit">Publier maintenant</button>
-          <div id="upload-progress" class="progress hidden"><span></span></div>
+          <div id="upload-progress" class="progress hidden" role="progressbar" aria-label="Progression de l’envoi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="upload-progress-bar"></span></div>
+          <p id="upload-status" class="upload-status hidden" aria-live="polite"></p>
         </form>
       </section>
 
@@ -174,6 +177,7 @@
     </div>
   </dialog>
 
+  <script src="vendor/tus.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

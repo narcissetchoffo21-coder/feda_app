@@ -2,6 +2,8 @@ import { FEDA_CONFIG } from "./config.js";
 
 const SESSION_KEY = "feda.session.v1";
 const { supabaseUrl, publishableKey, storageBucket } = FEDA_CONFIG;
+const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+const resumableUploadUrl = `https://${projectRef}.storage.supabase.co/storage/v1/upload/resumable`;
 
 function safeJson(text) {
   if (!text) return null;
@@ -10,6 +12,17 @@ function safeJson(text) {
 
 function messageFor(payload, fallback = "Une erreur est survenue") {
   return payload?.msg || payload?.message || payload?.error_description || payload?.error || fallback;
+}
+
+function uploadErrorMessage(error) {
+  const status = error?.originalResponse?.getStatus?.();
+  if (status === 400) return "Le format de cette vidéo n’est pas accepté.";
+  if (status === 401) return "Votre session a expiré. Reconnectez-vous puis réessayez.";
+  if (status === 403) return "FEDA n’a pas l’autorisation d’enregistrer cette vidéo.";
+  if (status === 413) return `La vidéo dépasse la taille autorisée de ${Math.round(FEDA_CONFIG.maxVideoBytes / (1024 * 1024))} Mo.`;
+  if (status === 429) return "Trop d’envois en même temps. Patientez puis réessayez.";
+  if (typeof navigator !== "undefined" && !navigator.onLine) return "Connexion Internet interrompue. L’envoi reprendra dès le retour du réseau.";
+  return "L’envoi a été interrompu. Vérifiez votre connexion puis appuyez de nouveau sur Publier.";
 }
 
 class FedaApi {
@@ -155,22 +168,36 @@ class FedaApi {
     return signed.startsWith("http") ? signed : `${supabaseUrl}/storage/v1${signed}`;
   }
 
-  async uploadVideo(file, path) {
+  async uploadVideo(file, path, onProgress = () => {}) {
     await this.ensureSession();
-    const cleanPath = path.split("/").map(encodeURIComponent).join("/");
-    const response = await fetch(`${supabaseUrl}/storage/v1/object/${storageBucket}/${cleanPath}`, {
-      method: "POST",
-      headers: {
-        apikey: publishableKey,
-        Authorization: `Bearer ${this.session.access_token}`,
-        "Content-Type": file.type,
-        "x-upsert": "false"
-      },
-      body: file
+    if (!globalThis.tus?.Upload) throw new Error("Le module d’envoi vidéo n’a pas été chargé. Actualisez FEDA puis réessayez.");
+
+    return new Promise((resolve, reject) => {
+      const upload = new globalThis.tus.Upload(file, {
+        endpoint: resumableUploadUrl,
+        retryDelays: [0, 1_000, 3_000, 5_000, 10_000, 20_000],
+        chunkSize: 6 * 1024 * 1024,
+        uploadDataDuringCreation: true,
+        removeFingerprintOnSuccess: true,
+        headers: { authorization: `Bearer ${this.session.access_token}` },
+        metadata: {
+          bucketName: storageBucket,
+          objectName: path,
+          contentType: file.type,
+          cacheControl: "3600"
+        },
+        onError: error => reject(new Error(uploadErrorMessage(error))),
+        onProgress: (bytesUploaded, bytesTotal) => {
+          const percent = bytesTotal ? Math.round((bytesUploaded / bytesTotal) * 100) : 0;
+          onProgress({ bytesUploaded, bytesTotal, percent });
+        },
+        onSuccess: () => {
+          onProgress({ bytesUploaded: file.size, bytesTotal: file.size, percent: 100 });
+          resolve({ path, uploadUrl: upload.url });
+        }
+      });
+      upload.start();
     });
-    const payload = safeJson(await response.text());
-    if (!response.ok) throw new Error(messageFor(payload, "Échec de l’envoi de la vidéo"));
-    return payload;
   }
 
   createVideo(row) {
