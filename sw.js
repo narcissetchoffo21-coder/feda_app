@@ -1,5 +1,5 @@
 const CACHE = "feda-shell-v2";
-const SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./api.js", "./config.js", "./manifest.webmanifest", "./privacy.html", "./terms.html", "./assets/feda-logo.svg", "./vendor/tus.min.js"];
+const SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./api.js", "./config.js", "./manifest.webmanifest", "./privacy.html", "./terms.html", "./assets/feda-logo.svg", "./tus.min.js"];
 self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())));
 self.addEventListener("fetch", event => {
