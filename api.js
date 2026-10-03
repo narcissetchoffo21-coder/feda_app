@@ -1,9 +1,10 @@
-import { FEDA_CONFIG } from "./config.js";
+import { FEDA_CONFIG } from "./config.js?v=3";
 
 const SESSION_KEY = "feda.session.v1";
 const { supabaseUrl, publishableKey, storageBucket } = FEDA_CONFIG;
 const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
 const resumableUploadUrl = `https://${projectRef}.storage.supabase.co/storage/v1/upload/resumable`;
+const STANDARD_UPLOAD_MAX_BYTES = 6 * 1024 * 1024;
 
 function safeJson(text) {
   if (!text) return null;
@@ -170,6 +171,7 @@ class FedaApi {
 
   async uploadVideo(file, path, onProgress = () => {}) {
     await this.ensureSession();
+    if (file.size <= STANDARD_UPLOAD_MAX_BYTES) return this.uploadSmallVideo(file, path, onProgress);
     if (!globalThis.tus?.Upload) throw new Error("Le module d’envoi vidéo n’a pas été chargé. Actualisez FEDA puis réessayez.");
 
     return new Promise((resolve, reject) => {
@@ -179,7 +181,10 @@ class FedaApi {
         chunkSize: 6 * 1024 * 1024,
         uploadDataDuringCreation: true,
         removeFingerprintOnSuccess: true,
-        headers: { authorization: `Bearer ${this.session.access_token}` },
+        headers: {
+          authorization: `Bearer ${this.session.access_token}`,
+          apikey: publishableKey
+        },
         metadata: {
           bucketName: storageBucket,
           objectName: path,
@@ -198,6 +203,31 @@ class FedaApi {
       });
       upload.start();
     });
+  }
+
+  async uploadSmallVideo(file, path, onProgress = () => {}, retry = true) {
+    await this.ensureSession();
+    const cleanPath = path.split("/").map(encodeURIComponent).join("/");
+    onProgress({ bytesUploaded: 0, bytesTotal: file.size, percent: 0 });
+    const response = await fetch(`${supabaseUrl}/storage/v1/object/${storageBucket}/${cleanPath}`, {
+      method: "POST",
+      headers: {
+        apikey: publishableKey,
+        Authorization: `Bearer ${this.session.access_token}`,
+        "Content-Type": file.type,
+        "cache-control": "3600",
+        "x-upsert": "false"
+      },
+      body: file
+    });
+    if (response.status === 401 && retry && this.session?.refresh_token) {
+      await this.refreshSession();
+      return this.uploadSmallVideo(file, path, onProgress, false);
+    }
+    const payload = safeJson(await response.text());
+    if (!response.ok) throw new Error(messageFor(payload, `Échec de l’envoi (${response.status})`));
+    onProgress({ bytesUploaded: file.size, bytesTotal: file.size, percent: 100 });
+    return { path, uploadUrl: null };
   }
 
   createVideo(row) {

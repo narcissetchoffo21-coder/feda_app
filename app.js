@@ -1,5 +1,5 @@
-import { api } from "./api.js";
-import { FEDA_CONFIG } from "./config.js";
+import { api } from "./api.js?v=3";
+import { FEDA_CONFIG } from "./config.js?v=3";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -62,7 +62,11 @@ function showApp() {
 
 async function bootstrap() {
   bindEvents();
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
+      .then(registration => registration.update())
+      .catch(() => {});
+  }
   if (!api.session) return showAuth();
   try {
     state.user = await api.getUser();
