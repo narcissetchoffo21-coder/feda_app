@@ -346,6 +346,9 @@ function previewVideo() {
 
 async function publishVideo(event) {
   event.preventDefault();
+  // Conserver la référence du formulaire avant les opérations asynchrones :
+  // event.currentTarget devient null après un await dans certains navigateurs/PWA.
+  const form = event.currentTarget;
   const input = $("#video-file");
   const selectedFile = input.files[0];
   if (!selectedFile) return toast("Choisissez d’abord une vidéo.", true);
@@ -376,7 +379,7 @@ async function publishVideo(event) {
     button.textContent = "Finalisation…";
     uploadStatus.textContent = "Enregistrement de la publication…";
     await api.createVideo({ user_id: state.user.id, storage_path: path, caption: $("#video-caption").value.trim(), mime_type: file.type, size_bytes: file.size });
-    event.currentTarget.reset();
+    form.reset();
     input.dataset.uploadPath = "";
     if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
     state.previewUrl = null;
