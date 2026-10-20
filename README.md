@@ -9,6 +9,7 @@ FEDA est une application web progressive (PWA) de vidéos courtes. Elle fonction
 - fils **Pour toi**, **Nouveautés** et **Abonnements** ;
 - publication de vidéos MP4/WebM/MOV jusqu’à 50 Mo sur l’offre Supabase gratuite, avec envoi découpé et reprise automatique sur les connexions mobiles ;
 - objectif prêt dans la configuration : 200 Mo après activation d’une offre Supabase payante et relèvement des limites globale et du compartiment `videos`, puis 1 Go lors de la sortie du palier supérieur ;
+- titre de la musique ou du son renseigné à la publication et affiché sous chaque vidéo ;
 - likes, commentaires, abonnements, partage et recherche ;
 - boîte de réception et notifications ;
 - signalement des contenus ;
@@ -97,4 +98,5 @@ Après avoir créé votre propre compte FEDA, son rôle doit être changé une s
 - `tus.min.js` : envoi vidéo résumable (TUS), nécessaire pour les vidéos de plus de 6 Mo ;
 - `config.js` : URL et clé publique ;
 - `manifest.webmanifest` et `sw.js` : installation PWA ;
-- `feda-logo.svg` : logo FEDA.
+- `feda-logo.svg` : logo FEDA ;
+- `docs/semaine-2-contenus.md` : calendrier, scénarios, légendes et hashtags des 15 vidéos de lancement.
