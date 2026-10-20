@@ -200,9 +200,10 @@ function renderFeed(videos) {
   feed.innerHTML = videos.map(video => {
     const own = video.user_id === state.user.id;
     const name = video.profiles?.display_name || "Créateur FEDA";
+    const musicTitle = video.music_title?.trim() || `Son original — ${name}`;
     return `<article class="video-card" data-video-id="${video.id}" data-user-id="${video.user_id}" data-storage-path="${escapeHtml(video.storage_path)}">
       <div class="video-loader">Chargement…</div><video loop playsinline preload="metadata"></video>
-      <div class="video-info"><div class="video-author"><div class="avatar">${escapeHtml(name[0]?.toUpperCase() || "F")}</div><button class="creator-link" data-action="creator-profile">@${escapeHtml(name)}</button>${own ? "" : `<button class="follow-button" data-action="follow" data-follow-creator="${video.user_id}">${state.following.has(video.user_id) ? "Suivi" : "Suivre"}</button>`}</div><p class="video-caption">${escapeHtml(video.caption || "")}</p></div>
+      <div class="video-info"><div class="video-author"><div class="avatar">${escapeHtml(name[0]?.toUpperCase() || "F")}</div><button class="creator-link" data-action="creator-profile">@${escapeHtml(name)}</button>${own ? "" : `<button class="follow-button" data-action="follow" data-follow-creator="${video.user_id}">${state.following.has(video.user_id) ? "Suivi" : "Suivre"}</button>`}</div><p class="video-caption">${escapeHtml(video.caption || "")}</p><p class="video-music">♫ ${escapeHtml(musicTitle)}</p></div>
       <aside class="video-actions">
         <button class="action ${state.liked.has(video.id) ? "liked" : ""}" data-action="like"><span>♥</span><small data-count="likes">${formatCount(video.like_count)}</small></button>
         <button class="action" data-action="comment"><span>●</span><small data-count="comments">${formatCount(video.comment_count)}</small></button>
@@ -441,7 +442,7 @@ async function publishVideo(event) {
     });
     button.textContent = "Finalisation…";
     uploadStatus.textContent = "Enregistrement de la publication…";
-    await api.createVideo({ user_id: state.user.id, storage_path: path, caption: $("#video-caption").value.trim(), mime_type: file.type, size_bytes: file.size });
+    await api.createVideo({ user_id: state.user.id, storage_path: path, caption: $("#video-caption").value.trim(), music_title: $("#video-music-title").value.trim(), mime_type: file.type, size_bytes: file.size });
     form.reset();
     input.dataset.uploadPath = "";
     if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
