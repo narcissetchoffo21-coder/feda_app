@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#070a12">
   <meta name="description" content="FEDA — vidéos courtes, créateurs et communauté.">
+  <link rel="canonical" href="https://feda.narelvir.cm/">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -36,6 +37,7 @@
         <button id="auth-submit" class="primary wide" type="submit">Se connecter</button>
       </form>
       <p id="auth-help" class="small">Votre compte FEDA est indépendant de ChatGPT.</p>
+      <p class="small legal-consent">En créant un compte, vous acceptez les <a href="terms.html">Conditions générales d’utilisation</a> et reconnaissez avoir lu la <a href="privacy.html">Politique de confidentialité</a>.</p>
     </div>
   </section>
 
@@ -76,7 +78,7 @@
           <label class="upload-zone" for="video-file">
             <span class="upload-icon">＋</span>
             <strong>Choisir une vidéo</strong>
-            <small>MP4, WebM ou MOV — 50 Mo maximum actuellement</small>
+            <small>MP4, WebM ou MOV — <span id="upload-limit">50 Mo</span> maximum actuellement</small>
             <input id="video-file" type="file" accept="video/mp4,video/webm,video/quicktime" required>
           </label>
           <p id="video-details" class="file-details hidden"></p>
@@ -141,7 +143,7 @@
         <button class="secondary wide" data-view="wallet">💰 Portefeuille et retraits</button>
         <button id="admin-button" class="secondary wide hidden" data-view="admin">🛡️ Administration</button>
         <button id="install-button" class="secondary wide hidden">Installer FEDA sur cet appareil</button>
-        <p class="small"><a href="privacy.html">Confidentialité</a> · <a href="terms.html">Règles de la communauté</a></p>
+        <p class="small"><a href="privacy.html">Politique de confidentialité</a> · <a href="terms.html">CGU et règles de la communauté</a></p>
         <button id="logout-button" class="danger wide">Se déconnecter</button>
       </section>
 
@@ -178,7 +180,26 @@
     </div>
   </dialog>
 
+  <dialog id="video-menu-dialog" class="sheet small-sheet">
+    <div class="sheet-head"><h3>Options de la vidéo</h3><button data-close-dialog aria-label="Fermer">×</button></div>
+    <div class="menu-actions" id="video-menu-actions">
+      <button type="button" data-video-menu="share">↗ Partager la vidéo</button>
+      <button type="button" class="report-option" data-video-menu="report">⚑ Signaler la vidéo</button>
+      <button type="button" data-close-dialog>Annuler</button>
+    </div>
+  </dialog>
+
+  <dialog id="creator-dialog" class="sheet small-sheet">
+    <div class="sheet-head"><h3>Profil du créateur</h3><button data-close-dialog aria-label="Fermer">×</button></div>
+    <div class="creator-sheet">
+      <div id="creator-avatar" class="avatar large">F</div>
+      <h3 id="creator-name">Créateur FEDA</h3>
+      <p id="creator-bio" class="muted">Chargement du profil…</p>
+      <button id="creator-follow-button" class="primary wide" type="button">Suivre</button>
+    </div>
+  </dialog>
+
   <script src="tus.min.js?v=4"></script>
-  <script type="module" src="app.js?v=4"></script>
+  <script type="module" src="app.js?v=5"></script>
 </body>
 </html>

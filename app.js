@@ -1,9 +1,9 @@
-import { api } from "./api.js?v=3";
-import { FEDA_CONFIG } from "./config.js?v=3";
+import { api } from "./api.js?v=5";
+import { FEDA_CONFIG } from "./config.js?v=5";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const state = { user: null, profile: null, feedMode: "for-you", videos: [], liked: new Set(), following: new Set(), activeVideo: null, installPrompt: null, previewUrl: null };
+const state = { user: null, profile: null, feedMode: "for-you", videos: [], liked: new Set(), following: new Set(), activeVideo: null, activeCreatorId: null, installPrompt: null, previewUrl: null };
 const VIDEO_MIME_BY_EXTENSION = Object.freeze({ mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime" });
 
 function escapeHtml(value = "") {
@@ -50,6 +50,16 @@ function formatMegabytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} Mo`;
 }
 
+function formatBytes(bytes) {
+  const megabytes = bytes / (1024 * 1024);
+  return `${Number.isInteger(megabytes) ? megabytes : megabytes.toFixed(1).replace(".", ",")} Mo`;
+}
+
+function updateUploadLimitUi() {
+  const limit = $("#upload-limit");
+  if (limit) limit.textContent = formatBytes(FEDA_CONFIG.maxVideoBytes);
+}
+
 function showAuth() {
   $("#auth-screen").classList.remove("hidden");
   $("#app").classList.add("hidden");
@@ -62,6 +72,7 @@ function showApp() {
 
 async function bootstrap() {
   bindEvents();
+  updateUploadLimitUi();
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
       .then(registration => registration.update())
@@ -97,6 +108,11 @@ function bindEvents() {
   $("#logout-button").addEventListener("click", logout);
   $$("[data-close-dialog]").forEach(button => button.addEventListener("click", () => button.closest("dialog").close()));
   $$("[data-gift]").forEach(button => button.addEventListener("click", () => sendGift(button)));
+  $("#video-menu-actions").addEventListener("click", handleVideoMenuAction);
+  $("#creator-follow-button").addEventListener("click", async event => {
+    try { await toggleFollow(event.currentTarget.dataset.creatorId, event.currentTarget); }
+    catch (error) { toast(error.message, true); }
+  });
   $$("[data-pack]").forEach(button => button.addEventListener("click", () => selectCoinPack(button)));
   $("#coin-order-form").addEventListener("submit", createCoinOrder);
   $("#payout-form").addEventListener("submit", requestPayout);
@@ -186,13 +202,13 @@ function renderFeed(videos) {
     const name = video.profiles?.display_name || "Créateur FEDA";
     return `<article class="video-card" data-video-id="${video.id}" data-user-id="${video.user_id}" data-storage-path="${escapeHtml(video.storage_path)}">
       <div class="video-loader">Chargement…</div><video loop playsinline preload="metadata"></video>
-      <div class="video-info"><div class="video-author"><div class="avatar">${escapeHtml(name[0]?.toUpperCase() || "F")}</div><strong>@${escapeHtml(name)}</strong>${own ? "" : `<button class="follow-button" data-action="follow">${state.following.has(video.user_id) ? "Abonné" : "S’abonner"}</button>`}</div><p class="video-caption">${escapeHtml(video.caption || "")}</p></div>
+      <div class="video-info"><div class="video-author"><div class="avatar">${escapeHtml(name[0]?.toUpperCase() || "F")}</div><button class="creator-link" data-action="creator-profile">@${escapeHtml(name)}</button>${own ? "" : `<button class="follow-button" data-action="follow" data-follow-creator="${video.user_id}">${state.following.has(video.user_id) ? "Suivi" : "Suivre"}</button>`}</div><p class="video-caption">${escapeHtml(video.caption || "")}</p></div>
       <aside class="video-actions">
         <button class="action ${state.liked.has(video.id) ? "liked" : ""}" data-action="like"><span>♥</span><small data-count="likes">${formatCount(video.like_count)}</small></button>
         <button class="action" data-action="comment"><span>●</span><small data-count="comments">${formatCount(video.comment_count)}</small></button>
         <button class="action" data-action="gift"><span>🎁</span><small>Cadeau</small></button>
         <button class="action" data-action="share"><span>↗</span><small data-count="shares">${formatCount(video.share_count)}</small></button>
-        <button class="action" data-action="report"><span>⋯</span><small>Signaler</small></button>
+        <button class="action" data-action="menu"><span>⋯</span><small>Plus</small></button>
       </aside>
     </article>`;
   }).join("");
@@ -232,8 +248,9 @@ async function handleFeedAction(event) {
     if (button.dataset.action === "comment") await openComments(video);
     if (button.dataset.action === "share") await shareVideo(video, button);
     if (button.dataset.action === "follow") await toggleFollow(video.user_id, button);
+    if (button.dataset.action === "creator-profile") await openCreatorProfile(video);
     if (button.dataset.action === "gift") { state.activeVideo = video; $("#gift-dialog").showModal(); }
-    if (button.dataset.action === "report") await reportVideo(video);
+    if (button.dataset.action === "menu") openVideoMenu(video);
   } catch (error) { toast(error.message, true); }
 }
 
@@ -247,11 +264,56 @@ async function toggleLike(video, button) {
 }
 
 async function toggleFollow(creatorId, button) {
+  if (!creatorId) return;
   const following = state.following.has(creatorId);
-  following ? await api.unfollow(creatorId, state.user.id) : await api.follow(creatorId, state.user.id);
-  following ? state.following.delete(creatorId) : state.following.add(creatorId);
-  button.textContent = following ? "S’abonner" : "Abonné";
-  toast(following ? "Abonnement retiré" : "Vous suivez ce créateur");
+  if (button) button.disabled = true;
+  try {
+    following ? await api.unfollow(creatorId, state.user.id) : await api.follow(creatorId, state.user.id);
+    following ? state.following.delete(creatorId) : state.following.add(creatorId);
+    syncFollowButtons(creatorId);
+    toast(following ? "Vous ne suivez plus ce créateur" : "Vous suivez ce créateur");
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function syncFollowButtons(creatorId) {
+  const label = state.following.has(creatorId) ? "Suivi" : "Suivre";
+  $$(`[data-follow-creator="${creatorId}"]`).forEach(button => { button.textContent = label; });
+  const profileButton = $("#creator-follow-button");
+  if (profileButton.dataset.creatorId === creatorId) profileButton.textContent = label;
+}
+
+async function openCreatorProfile(video) {
+  state.activeCreatorId = video.user_id;
+  const dialog = $("#creator-dialog");
+  const name = video.profiles?.display_name || "Créateur FEDA";
+  $("#creator-name").textContent = `@${name}`;
+  $("#creator-avatar").textContent = name[0]?.toUpperCase() || "F";
+  $("#creator-bio").textContent = "Chargement du profil…";
+  const followButton = $("#creator-follow-button");
+  followButton.dataset.creatorId = video.user_id;
+  followButton.classList.toggle("hidden", video.user_id === state.user.id);
+  syncFollowButtons(video.user_id);
+  dialog.showModal();
+  const profiles = await api.getProfile(video.user_id);
+  $("#creator-bio").textContent = profiles[0]?.bio || "Ce créateur n’a pas encore ajouté de biographie.";
+}
+
+function openVideoMenu(video) {
+  state.activeVideo = video;
+  $("#video-menu-dialog").showModal();
+}
+
+async function handleVideoMenuAction(event) {
+  const button = event.target.closest("[data-video-menu]");
+  if (!button || !state.activeVideo) return;
+  const video = state.activeVideo;
+  $("#video-menu-dialog").close();
+  try {
+    if (button.dataset.videoMenu === "share") await shareVideo(video);
+    if (button.dataset.videoMenu === "report") await reportVideo(video);
+  } catch (error) { toast(error.message, true); }
 }
 
 async function openComments(video) {
@@ -281,7 +343,8 @@ async function shareVideo(video, button) {
   const url = `${location.origin}${location.pathname}#video=${video.id}`;
   await api.addShare(video.id, state.user.id);
   video.share_count += 1;
-  $("[data-count=shares]", button).textContent = formatCount(video.share_count);
+  const counter = button ? $("[data-count=shares]", button) : $(`[data-video-id="${video.id}"] [data-count=shares]`);
+  if (counter) counter.textContent = formatCount(video.share_count);
   if (navigator.share) await navigator.share({ title: "Vidéo FEDA", text: video.caption, url });
   else { await navigator.clipboard.writeText(url); toast("Lien copié"); }
 }
