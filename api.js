@@ -1,4 +1,4 @@
-import { FEDA_CONFIG } from "./config.js?v=3";
+import { FEDA_CONFIG } from "./config.js?v=5";
 
 const SESSION_KEY = "feda.session.v1";
 const { supabaseUrl, publishableKey, storageBucket } = FEDA_CONFIG;
@@ -201,7 +201,12 @@ class FedaApi {
           resolve({ path, uploadUrl: upload.url });
         }
       });
-      upload.start();
+      upload.findPreviousUploads()
+        .then(previousUploads => {
+          if (previousUploads.length) upload.resumeFromPreviousUpload(previousUploads[0]);
+          upload.start();
+        })
+        .catch(error => reject(new Error(uploadErrorMessage(error))));
     });
   }
 

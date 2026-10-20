@@ -7,8 +7,8 @@ FEDA est une application web progressive (PWA) de vidéos courtes. Elle fonction
 - inscription et connexion FEDA ;
 - vidéos verticales plein écran ;
 - fils **Pour toi**, **Nouveautés** et **Abonnements** ;
-- publication de vidéos MP4/WebM/MOV jusqu’à 50 Mo sur l’offre gratuite, avec envoi découpé et reprise automatique sur les connexions mobiles ;
-- limites prévues : 100 Mo après activation de l’offre Pro, puis 1 Go lors de la sortie du palier Pro 1 Go ;
+- publication de vidéos MP4/WebM/MOV jusqu’à 50 Mo sur l’offre Supabase gratuite, avec envoi découpé et reprise automatique sur les connexions mobiles ;
+- objectif prêt dans la configuration : 200 Mo après activation d’une offre Supabase payante et relèvement des limites globale et du compartiment `videos`, puis 1 Go lors de la sortie du palier supérieur ;
 - likes, commentaires, abonnements, partage et recherche ;
 - boîte de réception et notifications ;
 - signalement des contenus ;
@@ -72,6 +72,16 @@ La PWA pourra être emballée comme application Android avec Trusted Web Activit
 
 La version web actuelle utilise une validation manuelle : le spectateur paie par MTN MoMo ou Orange Money, saisit sa référence, puis un administrateur valide la commande. Pour une confirmation automatique, il faudra obtenir des identifiants marchands officiels MTN/Orange et les connecter à une fonction serveur. Ne mettez jamais ces secrets dans `config.js`.
 
+## Passer la limite vidéo à 200 Mo
+
+Le code utilise déjà TUS avec le domaine Storage direct et des blocs de 6 Mo. Avant d’activer 200 Mo dans `config.js`, il faut :
+
+1. passer le projet Supabase sur une offre permettant plus de 50 Mo ;
+2. régler la limite globale Storage à au moins 200 Mo ;
+3. régler la limite du compartiment privé `videos` à 200 Mo ;
+4. remplacer `maxVideoBytes` par `targetMaxVideoBytes` dans `config.js` ;
+5. tester une vraie vidéo supérieure à 50 Mo sur téléphone.
+
 Important : Google considère les monnaies virtuelles comme des biens numériques. Une application téléchargée depuis Google Play doit donc normalement utiliser Google Play Billing pour vendre les FedaCoins. Le paiement Mobile Money direct peut rester sur le site web, mais ne doit pas être présenté tel quel dans l’application Play Store sauf programme d’exception ou de facturation alternative applicable.
 
 ## Première administration
@@ -84,7 +94,7 @@ Après avoir créé votre propre compte FEDA, son rôle doit être changé une s
 - `styles.css` : apparence téléphone/ordinateur ;
 - `app.js` : interactions et interface ;
 - `api.js` : connexion sécurisée à Supabase ;
-- `vendor/tus.min.js` : envoi vidéo résumable (TUS), nécessaire pour les vidéos de plus de 6 Mo ;
+- `tus.min.js` : envoi vidéo résumable (TUS), nécessaire pour les vidéos de plus de 6 Mo ;
 - `config.js` : URL et clé publique ;
 - `manifest.webmanifest` et `sw.js` : installation PWA ;
-- `assets/feda-logo.svg` : logo FEDA.
+- `feda-logo.svg` : logo FEDA.
