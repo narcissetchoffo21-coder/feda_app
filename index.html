@@ -87,6 +87,10 @@
           <label>Légende
             <textarea id="video-caption" maxlength="500" rows="4" placeholder="Écrivez une légende…"></textarea>
           </label>
+          <label>Titre de la musique ou du son
+            <input id="video-music-title" maxlength="120" placeholder="Ex. Son original — NARELVIR">
+            <small class="field-hint">Facultatif. Utilisez uniquement une musique autorisée.</small>
+          </label>
           <button id="publish-button" class="primary wide" type="submit">Publier maintenant</button>
           <div id="upload-progress" class="progress hidden" role="progressbar" aria-label="Progression de l’envoi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="upload-progress-bar"></span></div>
           <p id="upload-status" class="upload-status hidden" aria-live="polite"></p>
@@ -200,6 +204,6 @@
   </dialog>
 
   <script src="tus.min.js?v=4"></script>
-  <script type="module" src="app.js?v=5"></script>
+  <script type="module" src="app.js?v=6"></script>
 </body>
 </html>
